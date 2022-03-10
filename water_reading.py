@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from os import environ
 from flask_cors import CORS
 from datetime import datetime
+import json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root@localhost/iot_cs462'
@@ -15,8 +16,8 @@ CORS(app)
 class WaterMeterReading(db.Model):
     __tablename__ = 'water_meter_readings'
 
-    household_ID = db.Column(db.Integer, primary_key=True)
-    datetime = db.Column(db.String(50), nullable=True)
+    household_ID = db.Column(db.String(10), primary_key=True)
+    datetime = db.Column(db.String(50), primary_key=True, nullable=True)
     date = db.Column(db.String(50), nullable=False)
     hour = db.Column(db.String(50), nullable=False)
     prev_reading = db.Column(db.Integer, nullable=False)
@@ -43,20 +44,19 @@ class WaterMeterReading(db.Model):
         return result
 
     def json(self):
-        return {"household_ID": self.household_ID, "datetime": self.datetime, "date": self.date, "hour": self.hour, "prev_reading": self.prev_reading, "current_reading": self.current_reading}
+        
+        return {"household_ID": self.household_ID, "datetime": str(self.datetime), "date": str(self.date), "hour": str(self.hour), "prev_reading": self.prev_reading, "current_reading": self.current_reading}
 
 
 
 @app.route("/get_all_reading")
 def get_all_reading():
     data_all = WaterMeterReading.query.all()
-    if data_all:
+    if len(data_all):
         return jsonify(
             {
                 "code": 200,
-                "data": {
-                    "data": [data.json() for data in data_all]
-                }
+                "data": [reading.json() for reading in data_all]
             }
         )
     return jsonify(
@@ -69,7 +69,7 @@ def get_all_reading():
 @app.route("/post_reading", methods=['POST'])
 def post_reading():
     data = request.get_json()
-    reading = WaterMeterReading(None, **data)
+    reading = WaterMeterReading(**data)
 
     try:
         db.session.add(reading)
